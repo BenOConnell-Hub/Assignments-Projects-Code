@@ -5,9 +5,32 @@ from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
 import math as m
 
-def lin_value_calc(X, Y, x_line, y_line, XR_Line, YR_Line, x_label, y_label, g_title, errors_x, errors_y, y_at_zero,x_at_zero, y_max, x_max):
+def lin_value_calc(X = np.array([0]), #X values (List or Numpy Array)
+                   Y = np.array([0]), #Y Values (List or Numpy Array)
+                   x_line = 0, #X coordinate for the displayed equation of the line of best fit (Float/Integer)
+                   y_line = 0, #Y coordinate for the displayed equation of the line of best fit (Float/Integer)
+                   XR_line = 0, #X coordinate for the displayed R^2 value (Float/Integer)
+                   YR_line = 0, #Y coordinate for the displayed R^2 value (Float/Integer)
+                   x_label = '', #X label (String)
+                   y_label = '', #Y label (String)
+                   g_title = '', #Graph Title (String)
+                   errors_x = 0, #Error values for X (List or Float/Integer)
+                   errors_y = 0, #Error values for Y (List or Float/Integer)
+                   y_at_zero = True, #Force graph to start at X = 0 (Boolean)
+                   x_at_zero = True, #Force graph to start at Y = 0 (Boolean)
+                   y_max = 0, #Max Length of Y axis, 0 means no restriction (Float/Integer)
+                   x_max = 0): #Max Length of X axis, 0 means no restriction (Float/Integer)
+    
     print("Plotting",g_title)
     #Reshaping x coordinates for LinearRegression()
+    
+    #Convert Lists to numpy arrays if needed
+    if not isinstance(X, np.ndarray):
+        X = np.array(X)
+        
+    if not isinstance(Y, np.ndarray):
+        Y = np.array(Y)
+    
     X_shaped = X.reshape(-1,1)
     
     #Slope calc
@@ -83,8 +106,87 @@ def lin_value_calc(X, Y, x_line, y_line, XR_Line, YR_Line, x_label, y_label, g_t
     R2 = r2_score(Yf, y_pred)
     print("The R-squared value is: ",R2)
     print("")
-    plt.text(XR_Line, YR_Line, "R^2 = " + "{:.4f}".format(R2), size = 14)
+    plt.text(XR_line, YR_line, "R^2 = " + "{:.4f}".format(R2), size = 14)
     
     #Showing Graph
     plt.legend(title = 'Legend')
     plt.show()
+
+def lin_value_calc_cent(
+    X, Y, x_line, y_line, XR_Line, YR_Line,
+    x_label, y_label, g_title,
+    errors_x, errors_y,
+    y_at_zero, x_at_zero, y_max, x_max
+):
+    print("Plotting", g_title)
+
+    # Convert to arrays
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    N = len(X)
+
+    # Re-centre X
+    X_mean = np.mean(X)
+    Xc = X - X_mean
+
+    # Fit using centred X
+    Xc_shaped = Xc.reshape(-1, 1)
+    model = LinearRegression().fit(Xc_shaped, Y)
+
+    slope = model.coef_[0]
+    intercept = model.intercept_   # this is now ȳ
+
+    print("Slope:", slope)
+    print("Intercept (at x = mean):", intercept)
+
+    # Predictions
+    Y_pred = slope * Xc + intercept
+
+    # Residual variance
+    residuals = Y - Y_pred
+    sigma2 = np.sum(residuals**2) / (N - 2)
+
+    # Uncertainties
+    slope_error = np.sqrt(sigma2 / np.sum(Xc**2))
+    intercept_error = np.sqrt(sigma2 / N)
+
+    print("Error in slope:", slope_error)
+    print("Error in intercept:", intercept_error)
+
+    # R^2
+    R2 = r2_score(Y, Y_pred)
+    print("R^2 =", R2)
+    print("")
+
+    # Plot
+    plt.scatter(X, Y, color='purple', label='Data Points')
+
+    xfit = np.linspace(min(X), max(X), 500)
+    yfit = slope * (xfit - X_mean) + intercept
+    plt.plot(xfit, yfit, '--', color='steelblue', linewidth=2, label='Line of Best Fit')
+
+    plt.text(x_line, y_line,
+             f'y = {intercept:.4f} + {slope:.6f}(x - x̄)',
+             size=13)
+
+    plt.text(XR_Line, YR_Line, f'R² = {R2:.4f}', size=13)
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(g_title)
+
+    plt.errorbar(X, Y, xerr=errors_x, yerr=errors_y, fmt='o')
+
+    if y_at_zero:
+        plt.ylim(bottom=0)
+    if y_max != 0:
+        plt.ylim(top=y_max)
+    if x_at_zero:
+        plt.xlim(left=0)
+    if x_max != 0:
+        plt.xlim(right=x_max)
+
+    plt.legend()
+    plt.show()
+
